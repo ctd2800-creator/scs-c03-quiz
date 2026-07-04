@@ -461,6 +461,15 @@ def build():
     questions = parse_questions(text)
     questions.sort(key=lambda q: q["id"])
     total = len(questions)
+
+    # merge cached Korean explanations if available
+    ko_path = ROOT / "explanation_ko.json"
+    if ko_path.exists():
+        ko_map = {int(k): v for k, v in json.loads(ko_path.read_text(encoding="utf-8")).items()}
+        for q in questions:
+            if q["id"] in ko_map and ko_map[q["id"]]:
+                q["explanation"] = ko_map[q["id"]]
+
     ids = [q["id"] for q in questions]
     print(f"Parsed {total} questions (ids {min(ids)}-{max(ids)})")
     missing = [i for i in range(1, 216) if i not in set(ids)]
