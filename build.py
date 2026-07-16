@@ -1,34 +1,38 @@
 """Parse SCS-C03 PDF and build index.html from _template.html."""
 import re
 import json
+from pathlib import Path
+
 import fitz
 
-PDF = r"C:\Users\ctd32\Downloads\SCS-C03-KR V13.95.pdf"
-TEMPLATE = r"c:\Users\ctd32\OneDrive\Documents\scs-quiz\_template.html"
-OUT = r"c:\Users\ctd32\OneDrive\Documents\scs-quiz\index.html"
+ROOT = Path(__file__).resolve().parent
+PDF = r"C:\Users\ctd32\Downloads\SCS-C03-KR V14.35.pdf"
+TEMPLATE = str(ROOT / "_template.html")
+OUT = str(ROOT / "index.html")
 
 LABELS = list("ABCDEF")
 
-# Image-only hotspot questions: choices/answers not in PDF text
+# Image-only / broken hotspot questions (V14.35 numbering)
 MANUAL = {
-    124: {
+    61: {
         "choices": [
-            "AWS 아티팩트 보고서",
-            "AWS Audit Manager 제어 기능",
-            "AWS Config 적합성 팩",
-            "AWS Config 규칙",
-            "Amazon Detective 조사",
-            "AWS Identity and Access Management 액세스 분석기 내부 액세스 분석기",
+            "Security Hub에서 Lambda 함수를 사용하는 사용자 지정 작업을 생성합니다.",
+            "Amazon EventBridge 규칙에 필터 세트를 생성하고 Security Hub에 적용합니다.",
+            "Amazon EventBridge에서 규칙을 정의합니다.",
+            "EC2 호스트 발견 항목에 대해 Security Hub에서 사용자 지정 작업을 선택합니다.",
+            "보안 그룹 검사 결과에 대해 Security Hub에서 사용자 지정 작업을 선택합니다.",
         ],
-        "answer": "A,B,F",
+        "answer": "A,C,D",
         "multi": True,
         "explanation": (
-            "AWS Audit Manager controls — 감사 평가용 증거를 CloudTrail, Config, Security Hub에서 자동 수집합니다. "
-            "IAM Access Analyzer internal access analyzers — 계정 내 IAM 주체가 특정 리소스에 접근할 수 있는지 식별합니다. "
-            "AWS Artifact reports — SOC, PCI 등 AWS 규정 준수 문서에 대한 온디맨드 접근을 제공합니다."
+            "1. Security Hub에서 Lambda 함수를 사용하는 사용자 지정 작업을 생성합니다. "
+            "2. Amazon EventBridge에서 규칙을 정의합니다. "
+            "3. EC2 호스트 발견 항목에 대해 Security Hub에서 사용자 지정 작업을 선택합니다. "
+            "사용자 지정 작업으로 격리 트리거를 만들고, EventBridge가 해당 이벤트를 수신해 Lambda를 호출한 뒤, "
+            "관련 EC2 발견 항목에서 작업을 실행합니다."
         ),
     },
-    151: {
+    77: {
         "choices": [
             "IAM Identity Center에서 외부 IdP를 ID 소스로 구성합니다.",
             "IdP API 엔드포인트를 신뢰 정책에 지정하는 IAM 역할을 생성합니다.",
@@ -46,7 +50,39 @@ MANUAL = {
             "SAML 연동은 메타데이터 교환 후 ID 소스 구성 순으로 진행합니다."
         ),
     },
-    213: {
+    118: {
+        "choices": [
+            "AWS 아티팩트 보고서",
+            "AWS Audit Manager 제어 기능",
+            "AWS Config 적합성 팩",
+            "AWS Config 규칙",
+            "Amazon Detective 조사",
+            "AWS Identity and Access Management 액세스 분석기 내부 액세스 분석기",
+        ],
+        "answer": "A,B,F",
+        "multi": True,
+        "explanation": (
+            "AWS Audit Manager controls — CloudTrail, Config, Security Hub에서 감사 평가용 증거를 자동 수집합니다. "
+            "IAM Access Analyzer internal access analyzers — 계정 내 IAM 주체가 특정 리소스에 접근할 수 있는지 식별합니다. "
+            "AWS Artifact reports — AWS 보안·규정 준수 문서를 온디맨드로 제공합니다."
+        ),
+    },
+    130: {
+        "choices": [
+            "AWS Config 애그리게이터",
+            "AWS Config 적합성 팩",
+            "AWS Systems Manager를 사용한 AWS Config",
+            "AWS Config 규칙",
+            "AWS 사용자 알림을 포함한 AWS Config",
+        ],
+        "answer": "A,B,C,D,E",
+        "multi": True,
+        "explanation": (
+            "적합성 팩으로 조직 전체에 규정 준수 규칙을 배포하고, 애그리게이터로 다중 계정·리전 데이터를 중앙화하며, "
+            "Config 규칙으로 구성을 평가하고, Systems Manager로 자동 교정하며, User Notifications로 위반 알림을 받습니다."
+        ),
+    },
+    153: {
         "choices": [
             "서비스 및 애플리케이션 로깅 구성",
             "수동 관리 및 대화형 접근을 줄입니다.",
@@ -62,6 +98,23 @@ MANUAL = {
             "트래픽 흐름 제어 → 네트워크 계층 내에서 트래픽 흐름을 제어. "
             "전송 중 데이터 보호 → 전송 중인 데이터 보호. "
             "로깅 구성 → 서비스 및 애플리케이션 로깅 구성."
+        ),
+    },
+    206: {
+        "choices": [
+            "AWS 아티팩트 보고서",
+            "AWS Audit Manager 제어 기능",
+            "AWS Config 적합성 팩",
+            "AWS Config 규칙",
+            "Amazon Detective 조사",
+            "AWS Identity and Access Management 액세스 분석기 내부 액세스 분석기",
+        ],
+        "answer": "A,B,F",
+        "multi": True,
+        "explanation": (
+            "AWS Audit Manager controls — CloudTrail, Config, Security Hub에서 감사 평가용 증거를 자동 수집합니다. "
+            "IAM Access Analyzer internal access analyzers — 계정 내 IAM 주체가 특정 리소스에 접근할 수 있는지 식별합니다. "
+            "AWS Artifact reports — AWS 보안·규정 준수 문서를 온디맨드로 제공합니다."
         ),
     },
 }
@@ -472,9 +525,12 @@ def build():
 
     ids = [q["id"] for q in questions]
     print(f"Parsed {total} questions (ids {min(ids)}-{max(ids)})")
-    missing = [i for i in range(1, 216) if i not in set(ids)]
+    expected = max(ids)
+    missing = [i for i in range(1, expected + 1) if i not in set(ids)]
     if missing:
         print(f"  WARNING missing ids: {missing}")
+    if total != expected:
+        print(f"  WARNING count mismatch: parsed={total}, expected={expected}")
 
     with open(base, encoding="utf-8") as f:
         html = f.read()
